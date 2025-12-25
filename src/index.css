@@ -2,74 +2,68 @@
 @tailwind components;
 @tailwind utilities;
 
-@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap');
 
 @layer base {
   :root {
-    --background: 220 20% 8%;
-    --foreground: 200 20% 95%;
+    --background: 210 20% 98%;
+    --foreground: 220 25% 10%;
 
-    --card: 220 18% 12%;
-    --card-foreground: 200 20% 95%;
+    --card: 0 0% 100%;
+    --card-foreground: 220 25% 10%;
 
-    --popover: 220 18% 10%;
-    --popover-foreground: 200 20% 95%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 220 25% 10%;
 
-    --primary: 180 70% 50%;
-    --primary-foreground: 220 20% 8%;
+    --primary: 200 85% 45%;
+    --primary-foreground: 0 0% 100%;
 
-    --secondary: 220 15% 18%;
-    --secondary-foreground: 200 20% 85%;
+    --secondary: 210 15% 93%;
+    --secondary-foreground: 220 20% 25%;
 
-    --muted: 220 15% 15%;
-    --muted-foreground: 200 10% 55%;
+    --muted: 210 15% 95%;
+    --muted-foreground: 220 10% 45%;
 
-    --accent: 35 90% 55%;
-    --accent-foreground: 220 20% 8%;
+    --accent: 25 95% 53%;
+    --accent-foreground: 0 0% 100%;
 
-    --destructive: 0 70% 50%;
-    --destructive-foreground: 210 40% 98%;
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
 
-    --border: 220 15% 20%;
-    --input: 220 15% 20%;
-    --ring: 180 70% 50%;
+    --border: 210 20% 88%;
+    --input: 210 20% 88%;
+    --ring: 200 85% 45%;
 
-    --radius: 0.5rem;
+    --radius: 0.625rem;
 
-    --sidebar-background: 220 18% 10%;
-    --sidebar-foreground: 200 20% 85%;
-    --sidebar-primary: 180 70% 50%;
-    --sidebar-primary-foreground: 220 20% 8%;
-    --sidebar-accent: 220 15% 15%;
-    --sidebar-accent-foreground: 200 20% 85%;
-    --sidebar-border: 220 15% 18%;
-    --sidebar-ring: 180 70% 50%;
-
-    /* Custom simulation colors */
-    --sim-grid: 220 15% 15%;
-    --sim-door: 180 70% 50%;
-    --sim-mass: 35 90% 55%;
-    --sim-track: 200 20% 40%;
-    --sim-frame: 200 10% 30%;
-    --sim-vector: 320 70% 60%;
-    --sim-success: 160 70% 45%;
-    --sim-warning: 35 90% 55%;
-
-    /* Gradients */
-    --gradient-primary: linear-gradient(135deg, hsl(180 70% 50%), hsl(200 70% 40%));
-    --gradient-accent: linear-gradient(135deg, hsl(35 90% 55%), hsl(25 90% 45%));
-    --gradient-card: linear-gradient(180deg, hsl(220 18% 14%), hsl(220 18% 10%));
+    /* Simulation specific colors */
+    --sim-grid: 210 15% 92%;
+    --sim-door: 200 85% 45%;
+    --sim-door-alt: 340 75% 55%;
+    --sim-mass: 25 95% 53%;
+    --sim-track: 220 15% 70%;
+    --sim-frame: 0 72% 51%;
+    --sim-hinge: 220 20% 35%;
+    --sim-floor: 210 15% 96%;
+    --sim-success: 160 65% 40%;
+    --sim-warning: 35 92% 50%;
+    --sim-energy-kinetic: 200 85% 50%;
+    --sim-energy-rotational: 280 70% 55%;
 
     /* Shadows */
-    --shadow-glow: 0 0 30px hsl(180 70% 50% / 0.2);
-    --shadow-card: 0 4px 20px hsl(0 0% 0% / 0.3);
-
-    /* Animation */
-    --transition-smooth: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    --shadow-sm: 0 1px 2px 0 hsl(220 25% 10% / 0.05);
+    --shadow-md: 0 4px 6px -1px hsl(220 25% 10% / 0.08), 0 2px 4px -2px hsl(220 25% 10% / 0.05);
+    --shadow-lg: 0 10px 15px -3px hsl(220 25% 10% / 0.08), 0 4px 6px -4px hsl(220 25% 10% / 0.05);
+    --shadow-xl: 0 20px 25px -5px hsl(220 25% 10% / 0.1), 0 8px 10px -6px hsl(220 25% 10% / 0.05);
 
     /* Fonts */
     --font-mono: 'JetBrains Mono', monospace;
-    --font-sans: 'Inter', system-ui, sans-serif;
+    --font-sans: 'IBM Plex Sans', system-ui, sans-serif;
+
+    /* Animation */
+    --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
+    --transition-base: 200ms cubic-bezier(0.4, 0, 0.2, 1);
+    --transition-smooth: 300ms cubic-bezier(0.4, 0, 0.2, 1);
   }
 }
 
@@ -79,7 +73,7 @@
   }
 
   body {
-    @apply bg-background text-foreground font-sans antialiased;
+    @apply bg-background text-foreground antialiased;
     font-family: var(--font-sans);
   }
 
@@ -90,37 +84,50 @@
 
 @layer components {
   .sim-panel {
-    @apply bg-card border border-border rounded-lg p-4;
-    background: var(--gradient-card);
-    box-shadow: var(--shadow-card);
+    @apply bg-card border border-border rounded-xl p-5;
+    box-shadow: var(--shadow-md);
+  }
+
+  .sim-panel-compact {
+    @apply bg-card border border-border rounded-lg p-3;
+    box-shadow: var(--shadow-sm);
   }
 
   .sim-value {
-    @apply font-mono text-lg font-semibold text-primary;
+    @apply font-mono text-lg font-semibold;
   }
 
   .sim-label {
-    @apply text-xs uppercase tracking-wider text-muted-foreground;
+    @apply text-[11px] uppercase tracking-wider font-medium text-muted-foreground;
   }
 
   .sim-grid-bg {
     background-image: 
       linear-gradient(hsl(var(--sim-grid)) 1px, transparent 1px),
       linear-gradient(90deg, hsl(var(--sim-grid)) 1px, transparent 1px);
-    background-size: 20px 20px;
+    background-size: 24px 24px;
   }
 
-  .data-highlight {
-    @apply px-2 py-1 rounded bg-primary/10 text-primary font-mono;
+  .data-chip {
+    @apply inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-muted text-sm font-medium;
   }
 
-  .glow-primary {
-    box-shadow: var(--shadow-glow);
+  .section-title {
+    @apply text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3;
+  }
+
+  .stat-card {
+    @apply p-3 rounded-lg bg-muted/50 border border-border/50;
+  }
+
+  .sim-canvas {
+    @apply rounded-lg overflow-hidden border border-border;
+    box-shadow: inset 0 2px 4px 0 hsl(220 25% 10% / 0.03);
   }
 }
 
 @layer utilities {
-  .animate-pulse-slow {
-    animation: pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  .text-balance {
+    text-wrap: balance;
   }
 }
