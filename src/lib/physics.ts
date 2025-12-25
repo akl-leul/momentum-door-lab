@@ -13,13 +13,21 @@ export interface PhysicsState {
   massVelocity: number; // m/s (along track)
   counterMass: number; // kg
   
+  // Friction
+  frictionCoefficient: number; // dimensionless (0-1)
+  
   // Simulation state
   time: number; // seconds
   hasCollided: boolean;
   impactAngularVelocity: number | null;
+  peakAngularVelocity: number;
   
   // Mode
   useCounterMass: boolean;
+  
+  // Energy tracking
+  initialKineticEnergy: number;
+  energyLostToFriction: number;
 }
 
 export interface SimulationData {
@@ -28,6 +36,17 @@ export interface SimulationData {
   massPosition: number;
   totalAngularMomentum: number;
   doorAngle: number;
+  kineticEnergy: number;
+  rotationalEnergy: number;
+  massKineticEnergy: number;
+}
+
+export interface EnergyBreakdown {
+  doorRotational: number;
+  massRotational: number;
+  massLinear: number;
+  total: number;
+  lostToFriction: number;
 }
 
 // Calculate moment of inertia of door (rod about one end)
@@ -48,21 +67,12 @@ export function calculateDoorAngularMomentum(
 }
 
 // Calculate angular momentum of the sliding mass
-// L = m * r * v_tangential
-// v_tangential = r * ω + v_radial_component (but mass moves along track)
-// For a mass at distance r moving with the door AND sliding:
-// L = m * r^2 * ω + m * r * v_radial (contribution from radial sliding)
-// But actually, for point mass at radius r:
-// L = m * (r × v) = m * r * v_perpendicular
-// When mass is on rotating door at distance r: L = m * r^2 * ω
+// For a mass at distance r rotating with the door: L = m * r^2 * ω
 export function calculateMassAngularMomentum(
   mass: number,
-  position: number, // distance from hinge
-  doorAngularVelocity: number,
-  massVelocity: number // radial velocity along track
+  position: number,
+  doorAngularVelocity: number
 ): number {
-  // Angular momentum = m * r^2 * ω (rotation contribution)
-  // Plus Coriolis/radial contribution is handled by conservation
   return mass * position * position * doorAngularVelocity;
 }
 
@@ -81,14 +91,13 @@ export function calculateTotalAngularMomentum(state: PhysicsState): number {
   const massL = calculateMassAngularMomentum(
     state.counterMass,
     state.massPosition,
-    state.doorAngularVelocity,
-    state.massVelocity
+    state.doorAngularVelocity
   );
   
   return doorL + massL;
 }
 
-// Calculate total moment of inertia (door + mass)
+// Calculate total moment of inertia
 export function calculateTotalMomentOfInertia(state: PhysicsState): number {
   const doorI = calculateDoorMomentOfInertia(state.doorMass, state.doorWidth);
   
@@ -96,15 +105,44 @@ export function calculateTotalMomentOfInertia(state: PhysicsState): number {
     return doorI;
   }
   
-  // Point mass at distance r: I = m * r^2
   const massI = state.counterMass * state.massPosition * state.massPosition;
-  
   return doorI + massI;
 }
 
-// Physics update step using conservation of angular momentum
-// When the mass slides outward, the moment of inertia increases,
-// so angular velocity must decrease to conserve L
+// Calculate energy breakdown
+export function calculateEnergyBreakdown(state: PhysicsState): EnergyBreakdown {
+  const doorI = calculateDoorMomentOfInertia(state.doorMass, state.doorWidth);
+  
+  // Door rotational kinetic energy: E = 0.5 * I * ω²
+  const doorRotational = 0.5 * doorI * state.doorAngularVelocity * state.doorAngularVelocity;
+  
+  let massRotational = 0;
+  let massLinear = 0;
+  
+  if (state.useCounterMass) {
+    // Mass rotational energy (due to door rotation)
+    const massI = state.counterMass * state.massPosition * state.massPosition;
+    massRotational = 0.5 * massI * state.doorAngularVelocity * state.doorAngularVelocity;
+    
+    // Mass linear kinetic energy (sliding along track)
+    massLinear = 0.5 * state.counterMass * state.massVelocity * state.massVelocity;
+  }
+  
+  return {
+    doorRotational,
+    massRotational,
+    massLinear,
+    total: doorRotational + massRotational + massLinear,
+    lostToFriction: state.energyLostToFriction,
+  };
+}
+
+// Calculate total kinetic energy
+export function calculateTotalKineticEnergy(state: PhysicsState): number {
+  return calculateEnergyBreakdown(state).total;
+}
+
+// Physics update with friction
 export function updatePhysics(state: PhysicsState, dt: number): PhysicsState {
   if (state.hasCollided) {
     return state;
@@ -112,23 +150,39 @@ export function updatePhysics(state: PhysicsState, dt: number): PhysicsState {
   
   const newState = { ...state };
   
-  // Store initial angular momentum (should be conserved)
+  // Store initial angular momentum (for conservation check)
   const L_initial = calculateTotalAngularMomentum(state);
   
   if (state.useCounterMass) {
-    // The mass experiences a pseudo-force (centrifugal in rotating frame)
-    // F = m * ω^2 * r (outward)
-    // This causes acceleration: a = ω^2 * r
+    // Centrifugal acceleration: a = ω² * r
     const centrifugalAcceleration = 
       state.doorAngularVelocity * state.doorAngularVelocity * state.massPosition;
     
+    // Friction force opposes motion
+    // F_friction = μ * m * g (simplified - assumes horizontal track)
+    // But we want friction proportional to normal force from centrifugal effect
+    // N = m * ω² * r, so F_friction = μ * m * ω² * r
+    const frictionDeceleration = state.frictionCoefficient * centrifugalAcceleration;
+    
+    // Net acceleration (friction opposes outward motion when sliding out)
+    let netAcceleration = centrifugalAcceleration;
+    if (state.massVelocity > 0) {
+      netAcceleration -= frictionDeceleration;
+    } else if (state.massVelocity < 0) {
+      netAcceleration += frictionDeceleration;
+    }
+    
+    // Track energy lost to friction
+    const frictionForce = state.counterMass * frictionDeceleration;
+    const distanceMoved = Math.abs(state.massVelocity * dt);
+    newState.energyLostToFriction = state.energyLostToFriction + frictionForce * distanceMoved;
+    
     // Update mass velocity and position
-    // Mass accelerates outward due to centrifugal effect
-    newState.massVelocity = state.massVelocity + centrifugalAcceleration * dt;
+    newState.massVelocity = state.massVelocity + netAcceleration * dt;
     newState.massPosition = state.massPosition + newState.massVelocity * dt;
     
-    // Constrain mass position to track (from 0.1m to door width - 0.1m)
-    const minPos = 0.15;
+    // Constrain mass position to track
+    const minPos = 0.12;
     const maxPos = state.doorWidth - 0.05;
     
     if (newState.massPosition < minPos) {
@@ -139,10 +193,12 @@ export function updatePhysics(state: PhysicsState, dt: number): PhysicsState {
       newState.massVelocity = Math.min(0, newState.massVelocity);
     }
     
-    // Calculate new moment of inertia
+    // Conserve angular momentum (modified by friction effects indirectly)
     const I_new = calculateTotalMomentOfInertia(newState);
     
-    // Conserve angular momentum: L = I * ω, so ω_new = L / I_new
+    // In ideal case (no friction), L is exactly conserved
+    // With friction, we approximate by using the initial L
+    // (friction primarily affects the mass's ability to slide, not angular momentum directly)
     newState.doorAngularVelocity = L_initial / I_new;
   }
   
@@ -150,8 +206,12 @@ export function updatePhysics(state: PhysicsState, dt: number): PhysicsState {
   newState.doorAngle = state.doorAngle + newState.doorAngularVelocity * dt;
   newState.time = state.time + dt;
   
-  // Check for collision with frame (door closes at angle = 0 or past π/2 = 90°)
-  // We'll use 85 degrees as the "slam" point
+  // Track peak angular velocity
+  if (Math.abs(newState.doorAngularVelocity) > Math.abs(newState.peakAngularVelocity)) {
+    newState.peakAngularVelocity = newState.doorAngularVelocity;
+  }
+  
+  // Check for collision (door closes at ~85 degrees)
   const maxAngle = (85 * Math.PI) / 180;
   
   if (newState.doorAngle >= maxAngle) {
@@ -170,30 +230,86 @@ export function createInitialState(
   doorWidth: number,
   counterMass: number,
   initialAngularVelocity: number,
-  useCounterMass: boolean
+  useCounterMass: boolean,
+  frictionCoefficient: number = 0
 ): PhysicsState {
-  return {
+  const state: PhysicsState = {
     doorAngle: 0,
     doorAngularVelocity: initialAngularVelocity,
     doorMass,
     doorWidth,
-    massPosition: 0.2, // Start near hinge
+    massPosition: 0.15,
     massVelocity: 0,
     counterMass,
+    frictionCoefficient,
     time: 0,
     hasCollided: false,
     impactAngularVelocity: null,
+    peakAngularVelocity: initialAngularVelocity,
     useCounterMass,
+    initialKineticEnergy: 0,
+    energyLostToFriction: 0,
   };
+  
+  state.initialKineticEnergy = calculateTotalKineticEnergy(state);
+  
+  return state;
 }
 
-// Reset state while preserving parameters
-export function resetState(state: PhysicsState): PhysicsState {
-  return createInitialState(
-    state.doorMass,
-    state.doorWidth,
-    state.counterMass,
-    state.doorAngularVelocity || 2.0, // Default if was 0
-    state.useCounterMass
+// Run a complete simulation and return all data points
+export function runFullSimulation(
+  doorMass: number,
+  doorWidth: number,
+  counterMass: number,
+  initialAngularVelocity: number,
+  useCounterMass: boolean,
+  frictionCoefficient: number,
+  timestep: number = 1 / 120,
+  sampleRate: number = 5
+): { data: SimulationData[]; finalState: PhysicsState } {
+  let state = createInitialState(
+    doorMass,
+    doorWidth,
+    counterMass,
+    initialAngularVelocity,
+    useCounterMass,
+    frictionCoefficient
   );
+  
+  const data: SimulationData[] = [];
+  let frame = 0;
+  const maxTime = 10; // Safety limit
+  
+  while (!state.hasCollided && state.time < maxTime) {
+    if (frame % sampleRate === 0) {
+      const energy = calculateEnergyBreakdown(state);
+      data.push({
+        time: state.time,
+        doorAngularVelocity: state.doorAngularVelocity,
+        massPosition: state.massPosition,
+        totalAngularMomentum: calculateTotalAngularMomentum(state),
+        doorAngle: state.doorAngle,
+        kineticEnergy: energy.total,
+        rotationalEnergy: energy.doorRotational + energy.massRotational,
+        massKineticEnergy: energy.massLinear,
+      });
+    }
+    state = updatePhysics(state, timestep);
+    frame++;
+  }
+  
+  // Add final data point
+  const finalEnergy = calculateEnergyBreakdown(state);
+  data.push({
+    time: state.time,
+    doorAngularVelocity: state.doorAngularVelocity,
+    massPosition: state.massPosition,
+    totalAngularMomentum: calculateTotalAngularMomentum(state),
+    doorAngle: state.doorAngle,
+    kineticEnergy: finalEnergy.total,
+    rotationalEnergy: finalEnergy.doorRotational + finalEnergy.massRotational,
+    massKineticEnergy: finalEnergy.massLinear,
+  });
+  
+  return { data, finalState: state };
 }

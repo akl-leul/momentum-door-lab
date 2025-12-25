@@ -1,3 +1,5 @@
+import { TrendingDown, Clock, Zap, CheckCircle } from 'lucide-react';
+
 interface ComparisonPanelProps {
   withMassImpact: number | null;
   withoutMassImpact: number | null;
@@ -21,86 +23,97 @@ export function ComparisonPanel({
       ? ((withMassTime - withoutMassTime) / withoutMassTime) * 100
       : null;
 
+  const hasResults = velocityReduction !== null;
+
   return (
     <div className="sim-panel">
-      <h3 className="text-sm font-semibold uppercase tracking-wider text-foreground mb-4">
-        Impact Comparison
-      </h3>
+      <h3 className="section-title">Impact Comparison</h3>
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-2 gap-3 mb-4">
         {/* Without Counter-Mass */}
-        <div className="p-4 rounded-lg bg-destructive/10 border border-destructive/20">
-          <div className="text-xs uppercase tracking-wider text-destructive mb-2">
-            Without Counter-Mass
+        <div className="p-3 rounded-lg bg-sim-door-alt/5 border border-sim-door-alt/20">
+          <div className="flex items-center gap-1.5 mb-2">
+            <div className="w-2 h-2 rounded-full bg-sim-door-alt" />
+            <span className="text-[10px] uppercase tracking-wider text-muted-foreground">
+              No Counter-Mass
+            </span>
           </div>
-          <div className="space-y-2">
-            <div>
-              <span className="text-xs text-muted-foreground">Impact ω</span>
-              <p className="font-mono text-lg font-bold text-foreground">
-                {withoutMassImpact !== null ? `${withoutMassImpact.toFixed(3)} rad/s` : '—'}
-              </p>
+          <div className="space-y-1.5">
+            <div className="flex items-center justify-between">
+              <span className="text-xs text-muted-foreground flex items-center gap-1">
+                <Zap className="h-3 w-3" /> Impact ω
+              </span>
+              <span className="font-mono text-sm font-semibold">
+                {withoutMassImpact !== null ? `${withoutMassImpact.toFixed(2)}` : '—'}
+              </span>
             </div>
-            <div>
-              <span className="text-xs text-muted-foreground">Time to Impact</span>
-              <p className="font-mono text-lg font-bold text-foreground">
-                {withoutMassTime !== null ? `${withoutMassTime.toFixed(3)} s` : '—'}
-              </p>
+            <div className="flex items-center justify-between">
+              <span className="text-xs text-muted-foreground flex items-center gap-1">
+                <Clock className="h-3 w-3" /> Time
+              </span>
+              <span className="font-mono text-sm font-semibold">
+                {withoutMassTime !== null ? `${withoutMassTime.toFixed(2)}s` : '—'}
+              </span>
             </div>
           </div>
         </div>
 
         {/* With Counter-Mass */}
-        <div className="p-4 rounded-lg bg-sim-success/10 border border-sim-success/20">
-          <div className="text-xs uppercase tracking-wider text-sim-success mb-2">
-            With Counter-Mass
+        <div className="p-3 rounded-lg bg-primary/5 border border-primary/20">
+          <div className="flex items-center gap-1.5 mb-2">
+            <div className="w-2 h-2 rounded-full bg-primary" />
+            <span className="text-[10px] uppercase tracking-wider text-muted-foreground">
+              With Counter-Mass
+            </span>
           </div>
-          <div className="space-y-2">
-            <div>
-              <span className="text-xs text-muted-foreground">Impact ω</span>
-              <p className="font-mono text-lg font-bold text-foreground">
-                {withMassImpact !== null ? `${withMassImpact.toFixed(3)} rad/s` : '—'}
-              </p>
+          <div className="space-y-1.5">
+            <div className="flex items-center justify-between">
+              <span className="text-xs text-muted-foreground flex items-center gap-1">
+                <Zap className="h-3 w-3" /> Impact ω
+              </span>
+              <span className="font-mono text-sm font-semibold">
+                {withMassImpact !== null ? `${withMassImpact.toFixed(2)}` : '—'}
+              </span>
             </div>
-            <div>
-              <span className="text-xs text-muted-foreground">Time to Impact</span>
-              <p className="font-mono text-lg font-bold text-foreground">
-                {withMassTime !== null ? `${withMassTime.toFixed(3)} s` : '—'}
-              </p>
+            <div className="flex items-center justify-between">
+              <span className="text-xs text-muted-foreground flex items-center gap-1">
+                <Clock className="h-3 w-3" /> Time
+              </span>
+              <span className="font-mono text-sm font-semibold">
+                {withMassTime !== null ? `${withMassTime.toFixed(2)}s` : '—'}
+              </span>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Reduction Stats */}
-      {velocityReduction !== null && (
-        <div className="mt-4 p-4 rounded-lg bg-primary/10 border border-primary/20">
-          <div className="text-center">
-            <div className="text-xs uppercase tracking-wider text-primary mb-1">
-              Angular Velocity Reduction
-            </div>
-            <div className="font-mono text-3xl font-bold text-primary">
-              {velocityReduction.toFixed(1)}%
-            </div>
-            {timeIncrease !== null && (
-              <p className="text-xs text-muted-foreground mt-2">
-                Impact delayed by {timeIncrease.toFixed(1)}%
-              </p>
-            )}
+      {/* Result Summary */}
+      {hasResults ? (
+        <div className="p-4 rounded-lg bg-sim-success/10 border border-sim-success/30">
+          <div className="flex items-center gap-2 mb-2">
+            <CheckCircle className="h-4 w-4 text-sim-success" />
+            <span className="text-sm font-medium text-foreground">Slam Prevention Effectiveness</span>
           </div>
+          <div className="flex items-baseline gap-2">
+            <span className="font-mono text-3xl font-bold text-sim-success">
+              {velocityReduction!.toFixed(1)}%
+            </span>
+            <span className="text-sm text-muted-foreground">velocity reduction</span>
+          </div>
+          {timeIncrease !== null && timeIncrease > 0 && (
+            <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
+              <TrendingDown className="h-3 w-3" />
+              Impact delayed by {timeIncrease.toFixed(1)}% more time
+            </p>
+          )}
+        </div>
+      ) : (
+        <div className="p-4 rounded-lg bg-muted/50 border border-border text-center">
+          <p className="text-sm text-muted-foreground">
+            Press <strong>Play</strong> to run simulation and see comparison results
+          </p>
         </div>
       )}
-
-      {/* Physics Explanation */}
-      <div className="mt-4 p-3 rounded-lg bg-muted/50 text-xs text-muted-foreground space-y-2">
-        <p>
-          <strong className="text-foreground">Conservation of Angular Momentum:</strong>{' '}
-          L = I × ω remains constant. When the sliding mass moves outward, 
-          the moment of inertia I increases, causing angular velocity ω to decrease.
-        </p>
-        <p className="font-mono text-primary/80">
-          I<sub>door</sub> = ⅓ML² | L<sub>total</sub> = I<sub>total</sub> × ω
-        </p>
-      </div>
     </div>
   );
 }
