@@ -359,8 +359,8 @@ export function SimulationVisualizer3D({
       
       if (altVelocityArrow && showVectors && Math.abs(altState.doorAngularVelocity) > 0.01 && !altState.hasCollided) {
         altVelocityArrow.visible = true;
-        const tipX = altDoor.position.x + Math.cos(altState.doorAngle) * state.doorWidth;
-        const tipZ = Math.sin(altState.doorAngle) * state.doorWidth;
+        const tipX = altDoor.position.x + Math.cos(altState.doorAngle) * altState.doorWidth;
+        const tipZ = Math.sin(altState.doorAngle) * altState.doorWidth;
         altVelocityArrow.position.set(tipX, 0.8, tipZ);
         altVelocityArrow.rotation.y = -(altState.doorAngle + Math.PI / 2);
         const scale = Math.min(Math.abs(altState.doorAngularVelocity) * 0.4, 1.5);

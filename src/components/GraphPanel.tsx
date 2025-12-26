@@ -16,9 +16,10 @@ interface GraphPanelProps {
   data: SimulationData[];
   comparisonData?: SimulationData[];
   showComparison: boolean;
+  compact?: boolean;
 }
 
-export function GraphPanel({ data, comparisonData, showComparison }: GraphPanelProps) {
+export function GraphPanel({ data, comparisonData, showComparison, compact = false }: GraphPanelProps) {
   const chartData = data.map((d, i) => ({
     time: d.time,
     angularVelocity: d.doorAngularVelocity,
@@ -39,7 +40,7 @@ export function GraphPanel({ data, comparisonData, showComparison }: GraphPanelP
 
   return (
     <div className="sim-panel space-y-4">
-      <h3 className="section-title">Time Series Analysis</h3>
+      {!compact && <h3 className="section-title">Time Series Analysis</h3>}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         {/* Angular Velocity */}

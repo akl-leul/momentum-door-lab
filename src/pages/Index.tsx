@@ -24,12 +24,12 @@ export default function Index() {
   // Simulation parameters
   const [doorMass, setDoorMass] = useState(15);
   const [doorWidth, setDoorWidth] = useState(0.9);
-  const [counterMass, setCounterMass] = useState(2);
-  const [initialVelocity, setInitialVelocity] = useState(2.5);
-  const [frictionCoefficient, setFrictionCoefficient] = useState(0.02);
+  const [counterMass, setCounterMass] = useState(12); // Much heavier for maximum dramatic effect
+  const [initialVelocity, setInitialVelocity] = useState(4.0);
+  const [frictionCoefficient, setFrictionCoefficient] = useState(0.0); // Zero friction for max sliding speed
   const [useCounterMass, setUseCounterMass] = useState(true);
-  const [sideBySideMode, setSideBySideMode] = useState(false);
-  
+  const [sideBySideMode, setSideBySideMode] = useState(true);
+
   // Simulation state
   const [isPlaying, setIsPlaying] = useState(false);
   const [state, setState] = useState<PhysicsState>(() =>
@@ -39,27 +39,27 @@ export default function Index() {
   const [historyData, setHistoryData] = useState<SimulationData[]>([]);
   const [initialAngularMomentum, setInitialAngularMomentum] = useState<number | null>(null);
   const [energy, setEnergy] = useState<EnergyBreakdown>(() => calculateEnergyBreakdown(state));
-  
+
   // Comparison data
   const [comparisonData, setComparisonData] = useState<SimulationData[]>([]);
   const [withMassResult, setWithMassResult] = useState<{ impact: number; time: number } | null>(null);
   const [withoutMassResult, setWithoutMassResult] = useState<{ impact: number; time: number } | null>(null);
-  
+
   const frameRef = useRef(0);
   const animationRef = useRef<number | null>(null);
 
   // Reset simulation
   const handleReset = useCallback(() => {
     setIsPlaying(false);
-    
+
     const effectiveUseCounterMass = sideBySideMode ? true : useCounterMass;
     const newState = createInitialState(
-      doorMass, doorWidth, counterMass, initialVelocity, 
+      doorMass, doorWidth, counterMass, initialVelocity,
       effectiveUseCounterMass, frictionCoefficient
     );
     setState(newState);
     setEnergy(calculateEnergyBreakdown(newState));
-    
+
     if (sideBySideMode) {
       const newAltState = createInitialState(
         doorMass, doorWidth, counterMass, initialVelocity,
@@ -69,7 +69,7 @@ export default function Index() {
     } else {
       setAltState(null);
     }
-    
+
     setHistoryData([]);
     setInitialAngularMomentum(null);
     setComparisonData([]);
@@ -81,12 +81,12 @@ export default function Index() {
   // Run comparison (non-side-by-side mode)
   const runComparisonSimulation = useCallback(() => {
     if (sideBySideMode) return;
-    
+
     const result = runFullSimulation(
       doorMass, doorWidth, counterMass, initialVelocity,
       false, frictionCoefficient, TIMESTEP, DATA_SAMPLE_RATE
     );
-    
+
     setComparisonData(result.data);
     if (result.finalState.hasCollided && result.finalState.impactAngularVelocity !== null) {
       setWithoutMassResult({
@@ -107,7 +107,15 @@ export default function Index() {
     }
 
     if (initialAngularMomentum === null) {
-      setInitialAngularMomentum(calculateTotalAngularMomentum(state));
+      const primaryL = calculateTotalAngularMomentum(state);
+      setInitialAngularMomentum(primaryL);
+
+      // In side-by-side mode, also track alt state initial momentum
+      if (sideBySideMode && altState) {
+        const altL = calculateTotalAngularMomentum(altState);
+        // We could track this separately if needed
+      }
+
       if (!sideBySideMode && useCounterMass) {
         runComparisonSimulation();
       }
@@ -169,6 +177,7 @@ export default function Index() {
               }
               return prev;
             }
+            // Update alt state (without counter-mass)
             return updatePhysics(prev, TIMESTEP);
           });
         }
@@ -204,7 +213,7 @@ export default function Index() {
         cancelAnimationFrame(animationRef.current);
       }
     };
-  }, [isPlaying, initialAngularMomentum, runComparisonSimulation, sideBySideMode, useCounterMass]);
+  }, [isPlaying, initialAngularMomentum, runComparisonSimulation, sideBySideMode, useCounterMass, handleReset]);
 
   // Reset when parameters change
   useEffect(() => {
@@ -212,26 +221,26 @@ export default function Index() {
   }, [doorMass, doorWidth, counterMass, initialVelocity, frictionCoefficient, useCounterMass, sideBySideMode]);
 
   return (
-    <div className="min-h-screen bg-background p-4 lg:p-6">
+    <div className="h-screen bg-background p-3 lg:p-4 overflow-hidden">
       {/* Header */}
-      <header className="mb-6">
-        <div className="flex items-center gap-3 mb-1">
-          <div className="p-2 rounded-lg bg-primary/10">
-            <Atom className="h-5 w-5 text-primary" />
+      <header className="mb-3">
+        <div className="flex items-center gap-2 mb-1">
+          <div className="p-1.5 rounded-lg bg-primary/10">
+            <Atom className="h-4 w-4 text-primary" />
           </div>
-          <h1 className="text-2xl lg:text-3xl font-bold text-foreground tracking-tight">
+          <h1 className="text-xl lg:text-2xl font-bold text-foreground tracking-tight">
             Momentum-Powered Door Slam Preventer
           </h1>
         </div>
-        <p className="text-sm text-muted-foreground flex items-center gap-2 ml-12">
-          <Info className="h-3.5 w-3.5" />
+        <p className="text-xs text-muted-foreground flex items-center gap-2 ml-8">
+          <Info className="h-3 w-3" />
           Angular momentum conservation simulation — pure classical mechanics, no artificial damping
         </p>
       </header>
 
-      <div className="grid grid-cols-1 xl:grid-cols-12 gap-4 lg:gap-5">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-3 h-[calc(100vh-120px)]">
         {/* Left Column: Controls */}
-        <div className="xl:col-span-3 space-y-4">
+        <div className="lg:col-span-3 space-y-3 overflow-y-auto">
           <ControlPanel
             doorMass={doorMass}
             doorWidth={doorWidth}
@@ -252,20 +261,20 @@ export default function Index() {
             onReset={handleReset}
             disabled={isPlaying}
           />
-          
+
           {/* Equations Card */}
           <div className="sim-panel-compact">
-            <h4 className="section-title">Governing Equations</h4>
-            <div className="space-y-2 font-mono text-xs">
-              <div className="p-2 rounded bg-muted/50">
+            <h4 className="section-title text-sm">Governing Equations</h4>
+            <div className="space-y-1.5 font-mono text-[10px]">
+              <div className="p-1.5 rounded bg-muted/50">
                 <span className="text-muted-foreground">Door Inertia:</span>
                 <p className="text-primary mt-0.5">I<sub>door</sub> = ⅓ × M × L²</p>
               </div>
-              <div className="p-2 rounded bg-muted/50">
+              <div className="p-1.5 rounded bg-muted/50">
                 <span className="text-muted-foreground">Mass Inertia:</span>
                 <p className="text-accent mt-0.5">I<sub>mass</sub> = m × r²</p>
               </div>
-              <div className="p-2 rounded bg-muted/50">
+              <div className="p-1.5 rounded bg-muted/50">
                 <span className="text-muted-foreground">Conservation:</span>
                 <p className="text-sim-success mt-0.5">L = I<sub>total</sub> × ω = const</p>
               </div>
@@ -274,27 +283,29 @@ export default function Index() {
         </div>
 
         {/* Center: 3D Visualization */}
-        <div className="xl:col-span-5">
-          <div className="sim-panel h-[420px] lg:h-[480px]">
-            <div className="flex items-center justify-between mb-3">
-              <h3 className="section-title mb-0">3D View</h3>
-              <span className="text-[10px] text-muted-foreground">Drag to rotate • Scroll to zoom</span>
+        <div className="lg:col-span-5">
+          <div className="sim-panel h-full">
+            <div className="flex items-center justify-between mb-2">
+              <h3 className="section-title mb-0 text-sm">3D Comparison View</h3>
+              <span className="text-[9px] text-muted-foreground">Drag to rotate • Scroll to zoom</span>
             </div>
-            <SimulationVisualizer3D 
-              state={state} 
-              altState={altState}
-              showVectors 
-              sideBySide={sideBySideMode}
-            />
+            <div className="h-[calc(100%-40px)]">
+              <SimulationVisualizer3D
+                state={state}
+                altState={altState}
+                showVectors
+                sideBySide={sideBySideMode}
+              />
+            </div>
             {sideBySideMode && (
-              <div className="flex justify-center gap-6 mt-3 text-xs">
+              <div className="flex justify-center gap-6 mt-2 text-[10px]">
                 <div className="flex items-center gap-1.5">
-                  <div className="w-3 h-3 rounded bg-primary" />
-                  <span className="text-muted-foreground">With Counter-Mass</span>
+                  <div className="w-2 h-2 rounded bg-primary" />
+                  <span className="text-muted-foreground font-medium">With Counter-Mass (Slower)</span>
                 </div>
                 <div className="flex items-center gap-1.5">
-                  <div className="w-3 h-3 rounded bg-sim-door-alt" />
-                  <span className="text-muted-foreground">Without Counter-Mass</span>
+                  <div className="w-2 h-2 rounded bg-sim-door-alt" />
+                  <span className="text-muted-foreground font-medium">Without Counter-Mass (Faster)</span>
                 </div>
               </div>
             )}
@@ -302,7 +313,7 @@ export default function Index() {
         </div>
 
         {/* Right Column: Data & Results */}
-        <div className="xl:col-span-4 space-y-4">
+        <div className="lg:col-span-4 space-y-3 overflow-y-auto">
           <DataPanel state={state} initialAngularMomentum={initialAngularMomentum} />
           <EnergyPanel energy={energy} initialEnergy={state.initialKineticEnergy} />
           <ComparisonPanel
@@ -311,24 +322,21 @@ export default function Index() {
             withMassTime={withMassResult?.time ?? null}
             withoutMassTime={withoutMassResult?.time ?? null}
           />
-        </div>
 
-        {/* Bottom: Graphs */}
-        <div className="xl:col-span-12">
-          <GraphPanel
-            data={historyData}
-            comparisonData={sideBySideMode ? undefined : comparisonData}
-            showComparison={!sideBySideMode && comparisonData.length > 0}
-          />
+          {/* Compact Graph */}
+          <div className="sim-panel-compact">
+            <h4 className="section-title text-sm mb-2">Performance Graph</h4>
+            <div className="h-32">
+              <GraphPanel
+                data={historyData}
+                comparisonData={sideBySideMode ? undefined : comparisonData}
+                showComparison={!sideBySideMode && comparisonData.length > 0}
+                compact={true}
+              />
+            </div>
+          </div>
         </div>
       </div>
-
-      {/* Footer */}
-      <footer className="mt-6 text-center text-xs text-muted-foreground">
-        <p>
-          This is a physics experiment in code. Conservation of angular momentum demonstrated through pure classical mechanics.
-        </p>
-      </footer>
     </div>
   );
 }
