@@ -2,7 +2,7 @@ import { Slider } from '@/components/ui/slider';
 import { Switch } from '@/components/ui/switch';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
-import { Play, Pause, RotateCcw, Weight, Ruler, Gauge, CircleDot, Columns, Waves, Wind } from 'lucide-react';
+import { Play, Pause, RotateCcw, Weight, Ruler, Gauge, CircleDot, Columns, Waves, Wind, Rewind } from 'lucide-react';
 
 interface ControlPanelProps {
   doorMass: number;
@@ -14,6 +14,8 @@ interface ControlPanelProps {
   useCounterMass: boolean;
   sideBySideMode: boolean;
   isPlaying: boolean;
+  playbackSpeed: number;
+  canReplay: boolean;
   onDoorMassChange: (value: number) => void;
   onDoorWidthChange: (value: number) => void;
   onCounterMassChange: (value: number) => void;
@@ -24,6 +26,8 @@ interface ControlPanelProps {
   onSideBySideModeChange: (value: boolean) => void;
   onPlayPause: () => void;
   onReset: () => void;
+  onReplay: () => void;
+  onSpeedChange: (speed: number) => void;
   disabled?: boolean;
 }
 
@@ -37,6 +41,8 @@ export function ControlPanel({
   useCounterMass,
   sideBySideMode,
   isPlaying,
+  playbackSpeed,
+  canReplay,
   onDoorMassChange,
   onDoorWidthChange,
   onCounterMassChange,
@@ -47,8 +53,18 @@ export function ControlPanel({
   onSideBySideModeChange,
   onPlayPause,
   onReset,
+  onReplay,
+  onSpeedChange,
   disabled = false,
 }: ControlPanelProps) {
+  const speedLabels: Record<number, string> = {
+    0.1: '0.1x',
+    0.25: '0.25x',
+    0.5: '0.5x',
+    1: '1x',
+    2: '2x',
+  };
+
   return (
     <div className="sim-panel space-y-5">
       <div className="flex items-center justify-between">
@@ -74,6 +90,40 @@ export function ControlPanel({
           >
             <RotateCcw className="h-3.5 w-3.5" />
           </Button>
+          {canReplay && (
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={onReplay}
+              disabled={isPlaying}
+              className="h-8 px-2"
+            >
+              <Rewind className="h-3.5 w-3.5 mr-1" /> Replay
+            </Button>
+          )}
+        </div>
+      </div>
+
+      {/* Playback Speed */}
+      <div className="p-3 rounded-lg bg-gradient-to-r from-purple-500/10 to-pink-500/10 border border-purple-500/20">
+        <div className="flex items-center justify-between mb-2">
+          <Label className="text-sm font-medium">Playback Speed</Label>
+          <span className="font-mono text-sm font-bold text-purple-600">
+            {speedLabels[playbackSpeed] || `${playbackSpeed.toFixed(2)}x`}
+          </span>
+        </div>
+        <Slider
+          value={[playbackSpeed]}
+          onValueChange={([v]) => onSpeedChange(v)}
+          min={0.1}
+          max={2}
+          step={0.05}
+          className="py-1"
+        />
+        <div className="flex justify-between text-[9px] text-muted-foreground mt-1">
+          <span>🐌 Slow-mo</span>
+          <span>Normal</span>
+          <span>Fast 🚀</span>
         </div>
       </div>
 

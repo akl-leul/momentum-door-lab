@@ -1,21 +1,26 @@
 import { useEffect, useRef, useCallback } from 'react';
 import * as THREE from 'three';
 import { PhysicsState } from '@/lib/physics';
+import { createWindParticleSystem, WindIndicator } from './WindParticles';
 
 interface SimulationVisualizer3DProps {
   state: PhysicsState;
   altState?: PhysicsState | null;
   showVectors?: boolean;
   sideBySide?: boolean;
+  isPlaying?: boolean;
 }
 
 export function SimulationVisualizer3D({ 
   state, 
   altState, 
   showVectors = true,
-  sideBySide = false 
+  sideBySide = false,
+  isPlaying = false,
 }: SimulationVisualizer3DProps) {
   const containerRef = useRef<HTMLDivElement>(null);
+  const windParticlesRef = useRef<ReturnType<typeof createWindParticleSystem> | null>(null);
+  const lastTimeRef = useRef(performance.now());
   const sceneRef = useRef<{
     scene: THREE.Scene;
     camera: THREE.PerspectiveCamera;
@@ -239,6 +244,9 @@ export function SimulationVisualizer3D({
       scene.add(altVelocityArrow);
     }
 
+    // Create wind particle system
+    windParticlesRef.current = createWindParticleSystem(scene, state.windTorque);
+
     sceneRef.current = {
       scene,
       camera,
@@ -317,6 +325,10 @@ export function SimulationVisualizer3D({
       container.removeEventListener('mouseup', handleMouseUp);
       container.removeEventListener('mouseleave', handleMouseUp);
       container.removeEventListener('wheel', handleWheel);
+      if (windParticlesRef.current) {
+        windParticlesRef.current.dispose();
+        windParticlesRef.current = null;
+      }
       renderer.dispose();
       container.removeChild(renderer.domElement);
     };
@@ -377,14 +389,25 @@ export function SimulationVisualizer3D({
       }
     }
 
+    // Update wind particles
+    if (windParticlesRef.current && isPlaying) {
+      const now = performance.now();
+      const delta = (now - lastTimeRef.current) / 1000;
+      lastTimeRef.current = now;
+      windParticlesRef.current.update(delta, state.windTorque);
+    }
+
     renderer.render(scene, camera);
-  }, [state, altState, showVectors]);
+  }, [state, altState, showVectors, isPlaying]);
 
   return (
-    <div 
-      ref={containerRef} 
-      className="w-full h-full min-h-[350px] sim-canvas cursor-grab active:cursor-grabbing"
-      style={{ touchAction: 'none' }}
-    />
+    <div className="relative w-full h-full">
+      <WindIndicator windTorque={state.windTorque} />
+      <div 
+        ref={containerRef} 
+        className="w-full h-full min-h-[350px] sim-canvas cursor-grab active:cursor-grabbing"
+        style={{ touchAction: 'none' }}
+      />
+    </div>
   );
 }

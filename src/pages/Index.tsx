@@ -21,15 +21,19 @@ const TIMESTEP = 1 / 120;
 const DATA_SAMPLE_RATE = 4;
 
 export default function Index() {
-  // Simulation parameters
+  // Simulation parameters - adjusted for 2-second difference
   const [doorMass, setDoorMass] = useState(15);
   const [doorWidth, setDoorWidth] = useState(0.9);
-  const [counterMass, setCounterMass] = useState(12); // Much heavier for maximum dramatic effect
-  const [initialVelocity, setInitialVelocity] = useState(0.5); // Lower initial velocity - wind will push it
-  const [frictionCoefficient, setFrictionCoefficient] = useState(0.0); // Zero friction for max sliding speed
-  const [windTorque, setWindTorque] = useState(8.0); // Wind pushes door closed
+  const [counterMass, setCounterMass] = useState(4); // Heavier counter-mass for more braking
+  const [initialVelocity, setInitialVelocity] = useState(0.3); // Lower initial velocity
+  const [frictionCoefficient, setFrictionCoefficient] = useState(0.0);
+  const [windTorque, setWindTorque] = useState(4.0); // Lower wind to extend time difference
   const [useCounterMass, setUseCounterMass] = useState(true);
   const [sideBySideMode, setSideBySideMode] = useState(true);
+
+  // Playback controls
+  const [playbackSpeed, setPlaybackSpeed] = useState(1);
+  const [hasCompleted, setHasCompleted] = useState(false);
 
   // Simulation state
   const [isPlaying, setIsPlaying] = useState(false);
@@ -52,6 +56,7 @@ export default function Index() {
   // Reset simulation
   const handleReset = useCallback(() => {
     setIsPlaying(false);
+    setHasCompleted(false);
 
     const effectiveUseCounterMass = sideBySideMode ? true : useCounterMass;
     const newState = createInitialState(
@@ -78,6 +83,13 @@ export default function Index() {
     setWithoutMassResult(null);
     frameRef.current = 0;
   }, [doorMass, doorWidth, counterMass, initialVelocity, useCounterMass, frictionCoefficient, windTorque, sideBySideMode]);
+
+  // Replay with slow-motion
+  const handleReplay = useCallback(() => {
+    setPlaybackSpeed(0.25); // Start replay in slow-motion
+    handleReset();
+    setTimeout(() => setIsPlaying(true), 100);
+  }, [handleReset]);
 
   // Run comparison (non-side-by-side mode)
   const runComparisonSimulation = useCallback(() => {
@@ -126,7 +138,7 @@ export default function Index() {
     let accumulator = 0;
 
     const loop = (currentTime: number) => {
-      const delta = (currentTime - lastTime) / 1000;
+      const delta = ((currentTime - lastTime) / 1000) * playbackSpeed;
       lastTime = currentTime;
       accumulator += delta;
 
@@ -194,11 +206,13 @@ export default function Index() {
             setAltState((alt) => {
               if (alt?.hasCollided) {
                 setIsPlaying(false);
+                setHasCompleted(true);
               }
               return alt;
             });
           } else {
             setIsPlaying(false);
+            setHasCompleted(true);
           }
         }
         return prev;
@@ -214,7 +228,7 @@ export default function Index() {
         cancelAnimationFrame(animationRef.current);
       }
     };
-  }, [isPlaying, initialAngularMomentum, runComparisonSimulation, sideBySideMode, useCounterMass, handleReset]);
+  }, [isPlaying, initialAngularMomentum, runComparisonSimulation, sideBySideMode, useCounterMass, handleReset, playbackSpeed]);
 
   // Reset when parameters change
   useEffect(() => {
@@ -252,6 +266,8 @@ export default function Index() {
             useCounterMass={useCounterMass}
             sideBySideMode={sideBySideMode}
             isPlaying={isPlaying}
+            playbackSpeed={playbackSpeed}
+            canReplay={hasCompleted}
             onDoorMassChange={setDoorMass}
             onDoorWidthChange={setDoorWidth}
             onCounterMassChange={setCounterMass}
@@ -262,6 +278,8 @@ export default function Index() {
             onSideBySideModeChange={setSideBySideMode}
             onPlayPause={() => setIsPlaying(!isPlaying)}
             onReset={handleReset}
+            onReplay={handleReplay}
+            onSpeedChange={setPlaybackSpeed}
             disabled={isPlaying}
           />
 
@@ -298,6 +316,7 @@ export default function Index() {
                 altState={altState}
                 showVectors
                 sideBySide={sideBySideMode}
+                isPlaying={isPlaying}
               />
             </div>
             {sideBySideMode && (
