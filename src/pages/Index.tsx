@@ -25,15 +25,16 @@ export default function Index() {
   const [doorMass, setDoorMass] = useState(15);
   const [doorWidth, setDoorWidth] = useState(0.9);
   const [counterMass, setCounterMass] = useState(12); // Much heavier for maximum dramatic effect
-  const [initialVelocity, setInitialVelocity] = useState(4.0);
+  const [initialVelocity, setInitialVelocity] = useState(0.5); // Lower initial velocity - wind will push it
   const [frictionCoefficient, setFrictionCoefficient] = useState(0.0); // Zero friction for max sliding speed
+  const [windTorque, setWindTorque] = useState(8.0); // Wind pushes door closed
   const [useCounterMass, setUseCounterMass] = useState(true);
   const [sideBySideMode, setSideBySideMode] = useState(true);
 
   // Simulation state
   const [isPlaying, setIsPlaying] = useState(false);
   const [state, setState] = useState<PhysicsState>(() =>
-    createInitialState(doorMass, doorWidth, counterMass, initialVelocity, true, frictionCoefficient)
+    createInitialState(doorMass, doorWidth, counterMass, initialVelocity, true, frictionCoefficient, windTorque)
   );
   const [altState, setAltState] = useState<PhysicsState | null>(null);
   const [historyData, setHistoryData] = useState<SimulationData[]>([]);
@@ -55,7 +56,7 @@ export default function Index() {
     const effectiveUseCounterMass = sideBySideMode ? true : useCounterMass;
     const newState = createInitialState(
       doorMass, doorWidth, counterMass, initialVelocity,
-      effectiveUseCounterMass, frictionCoefficient
+      effectiveUseCounterMass, frictionCoefficient, windTorque
     );
     setState(newState);
     setEnergy(calculateEnergyBreakdown(newState));
@@ -63,7 +64,7 @@ export default function Index() {
     if (sideBySideMode) {
       const newAltState = createInitialState(
         doorMass, doorWidth, counterMass, initialVelocity,
-        false, frictionCoefficient
+        false, frictionCoefficient, windTorque
       );
       setAltState(newAltState);
     } else {
@@ -76,7 +77,7 @@ export default function Index() {
     setWithMassResult(null);
     setWithoutMassResult(null);
     frameRef.current = 0;
-  }, [doorMass, doorWidth, counterMass, initialVelocity, useCounterMass, frictionCoefficient, sideBySideMode]);
+  }, [doorMass, doorWidth, counterMass, initialVelocity, useCounterMass, frictionCoefficient, windTorque, sideBySideMode]);
 
   // Run comparison (non-side-by-side mode)
   const runComparisonSimulation = useCallback(() => {
@@ -84,7 +85,7 @@ export default function Index() {
 
     const result = runFullSimulation(
       doorMass, doorWidth, counterMass, initialVelocity,
-      false, frictionCoefficient, TIMESTEP, DATA_SAMPLE_RATE
+      false, frictionCoefficient, windTorque, TIMESTEP, DATA_SAMPLE_RATE
     );
 
     setComparisonData(result.data);
@@ -94,7 +95,7 @@ export default function Index() {
         time: result.finalState.time,
       });
     }
-  }, [doorMass, doorWidth, counterMass, initialVelocity, frictionCoefficient, sideBySideMode]);
+  }, [doorMass, doorWidth, counterMass, initialVelocity, frictionCoefficient, windTorque, sideBySideMode]);
 
   // Physics loop
   useEffect(() => {
@@ -218,7 +219,7 @@ export default function Index() {
   // Reset when parameters change
   useEffect(() => {
     handleReset();
-  }, [doorMass, doorWidth, counterMass, initialVelocity, frictionCoefficient, useCounterMass, sideBySideMode]);
+  }, [doorMass, doorWidth, counterMass, initialVelocity, frictionCoefficient, windTorque, useCounterMass, sideBySideMode]);
 
   return (
     <div className="h-screen bg-background p-3 lg:p-4 overflow-hidden">
@@ -247,6 +248,7 @@ export default function Index() {
             counterMass={counterMass}
             initialVelocity={initialVelocity}
             frictionCoefficient={frictionCoefficient}
+            windTorque={windTorque}
             useCounterMass={useCounterMass}
             sideBySideMode={sideBySideMode}
             isPlaying={isPlaying}
@@ -255,6 +257,7 @@ export default function Index() {
             onCounterMassChange={setCounterMass}
             onInitialVelocityChange={setInitialVelocity}
             onFrictionChange={setFrictionCoefficient}
+            onWindTorqueChange={setWindTorque}
             onUseCounterMassChange={setUseCounterMass}
             onSideBySideModeChange={setSideBySideMode}
             onPlayPause={() => setIsPlaying(!isPlaying)}
