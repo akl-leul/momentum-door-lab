@@ -2,7 +2,7 @@ import { Slider } from '@/components/ui/slider';
 import { Switch } from '@/components/ui/switch';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
-import { Play, Pause, RotateCcw, Weight, Ruler, Gauge, CircleDot, Columns, Waves } from 'lucide-react';
+import { Play, Pause, RotateCcw, Weight, Ruler, Gauge, CircleDot, Columns, Waves, Wind } from 'lucide-react';
 
 interface ControlPanelProps {
   doorMass: number;
@@ -10,6 +10,7 @@ interface ControlPanelProps {
   counterMass: number;
   initialVelocity: number;
   frictionCoefficient: number;
+  windTorque: number;
   useCounterMass: boolean;
   sideBySideMode: boolean;
   isPlaying: boolean;
@@ -18,6 +19,7 @@ interface ControlPanelProps {
   onCounterMassChange: (value: number) => void;
   onInitialVelocityChange: (value: number) => void;
   onFrictionChange: (value: number) => void;
+  onWindTorqueChange: (value: number) => void;
   onUseCounterMassChange: (value: boolean) => void;
   onSideBySideModeChange: (value: boolean) => void;
   onPlayPause: () => void;
@@ -31,6 +33,7 @@ export function ControlPanel({
   counterMass,
   initialVelocity,
   frictionCoefficient,
+  windTorque,
   useCounterMass,
   sideBySideMode,
   isPlaying,
@@ -39,6 +42,7 @@ export function ControlPanel({
   onCounterMassChange,
   onInitialVelocityChange,
   onFrictionChange,
+  onWindTorqueChange,
   onUseCounterMassChange,
   onSideBySideModeChange,
   onPlayPause,
@@ -207,6 +211,29 @@ export function ControlPanel({
           />
           <p className="text-[10px] text-muted-foreground">
             0 = frictionless · 0.5 = high friction
+          </p>
+        </div>
+
+        {/* Wind Torque */}
+        <div className="space-y-2">
+          <div className="flex items-center justify-between">
+            <Label className="flex items-center gap-1.5 text-sm">
+              <Wind className="h-3.5 w-3.5 text-sky-500" />
+              Wind Force
+            </Label>
+            <span className="font-mono text-sm font-medium text-sky-600">{windTorque.toFixed(1)} N⋅m</span>
+          </div>
+          <Slider
+            value={[windTorque]}
+            onValueChange={([v]) => onWindTorqueChange(v)}
+            min={0}
+            max={20}
+            step={0.5}
+            disabled={disabled}
+            className="py-1"
+          />
+          <p className="text-[10px] text-muted-foreground">
+            Torque pushing door closed · Higher = stronger wind
           </p>
         </div>
       </div>

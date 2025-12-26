@@ -16,6 +16,9 @@ export interface PhysicsState {
   // Friction
   frictionCoefficient: number; // dimensionless (0-1)
 
+  // Wind effect
+  windTorque: number; // N⋅m (torque applied by wind)
+
   // Simulation state
   time: number; // seconds
   hasCollided: boolean;
@@ -151,7 +154,7 @@ export function calculateTotalKineticEnergy(state: PhysicsState): number {
   return calculateEnergyBreakdown(state).total;
 }
 
-// Physics update with friction
+// Physics update with friction and wind
 export function updatePhysics(state: PhysicsState, dt: number): PhysicsState {
   if (state.hasCollided) {
     return state;
@@ -159,7 +162,14 @@ export function updatePhysics(state: PhysicsState, dt: number): PhysicsState {
 
   const newState = { ...state };
 
-  // Store initial angular momentum (for conservation check)
+  // Calculate total moment of inertia for wind torque application
+  const I_total = calculateTotalMomentOfInertia(state);
+
+  // Apply wind torque: τ = I * α, so α = τ / I
+  // Wind pushes the door closed (positive angular acceleration)
+  const windAngularAcceleration = state.windTorque / I_total;
+
+  // Store initial angular momentum (for conservation check within counter-mass system)
   const L_initial = calculateTotalAngularMomentum(state);
 
   if (state.useCounterMass) {
@@ -202,15 +212,20 @@ export function updatePhysics(state: PhysicsState, dt: number): PhysicsState {
       newState.massVelocity = Math.min(0, newState.massVelocity);
     }
 
-    // Proper angular momentum conservation
+    // Proper angular momentum conservation (internal system)
     // As mass slides outward, total moment of inertia increases
     // To conserve L, angular velocity must decrease: ω_new = L / I_new
-    const I_old = calculateTotalMomentOfInertia(state);
     const I_new = calculateTotalMomentOfInertia(newState);
 
-    // Conservation: L_initial = I_old * ω_old = I_new * ω_new
+    // Conservation: L_initial = I_new * ω_new (before wind)
     // Therefore: ω_new = L_initial / I_new
     newState.doorAngularVelocity = L_initial / I_new;
+
+    // Now apply wind torque as external force (changes total angular momentum)
+    newState.doorAngularVelocity += windAngularAcceleration * dt;
+  } else {
+    // Without counter-mass, just apply wind acceleration
+    newState.doorAngularVelocity = state.doorAngularVelocity + windAngularAcceleration * dt;
   }
 
   // Update door angle
@@ -242,7 +257,8 @@ export function createInitialState(
   counterMass: number,
   initialAngularVelocity: number,
   useCounterMass: boolean,
-  frictionCoefficient: number = 0
+  frictionCoefficient: number = 0,
+  windTorque: number = 0
 ): PhysicsState {
   const state: PhysicsState = {
     doorAngle: 0,
@@ -253,6 +269,7 @@ export function createInitialState(
     massVelocity: 0,
     counterMass,
     frictionCoefficient,
+    windTorque,
     time: 0,
     hasCollided: false,
     impactAngularVelocity: null,
@@ -275,6 +292,7 @@ export function runFullSimulation(
   initialAngularVelocity: number,
   useCounterMass: boolean,
   frictionCoefficient: number,
+  windTorque: number = 0,
   timestep: number = 1 / 150,
   sampleRate: number = 5
 ): { data: SimulationData[]; finalState: PhysicsState } {
@@ -284,7 +302,8 @@ export function runFullSimulation(
     counterMass,
     initialAngularVelocity,
     useCounterMass,
-    frictionCoefficient
+    frictionCoefficient,
+    windTorque
   );
 
   const data: SimulationData[] = [];
